@@ -42,6 +42,9 @@ func NewBucket(client rediser, key string, capacity int64, rate float64) *Bucket
 func (b *Bucket) Take(count int64) (bool, error) {
 	result, err := tokenScript.Run(context.Background(), b.client, []string{b.key}, b.capacity, b.rate, time.Now().UnixMilli(), count).Int64()
 	if err != nil {
+		if err == redis.Nil {
+			return false, nil
+		}
 		return false, err
 	}
 	return result > 0, nil
