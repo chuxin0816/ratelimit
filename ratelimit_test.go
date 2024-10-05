@@ -2,7 +2,9 @@ package ratelimit
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -19,19 +21,50 @@ func init() {
 }
 
 func TestTakeSuccess(t *testing.T) {
-	bucket := NewBucket(rdb, "test", 10, 1)
-	if ok, err := bucket.Take(1); err != nil {
-		t.Errorf("error: %v", err)
-	} else if !ok {
-		t.Errorf("expected: true, got: %v", ok)
+	bucket := NewBucket(rdb, "test", 1, 10)
+	if !bucket.Take() {
+		t.Errorf("expected: true, got: false")
+	}
+
+	bucket2 := NewBucket(rdb, "test2", 1, 0)
+	if bucket2.Take() {
+		t.Errorf("expected: false, got: true")
 	}
 }
 
-func TestTakeFail(t *testing.T) {
-	bucket := NewBucket(rdb, "test", 2, 2)
-	if ok, err := bucket.Take(3); err != nil {
-		t.Errorf("error: %v", err)
-	} else if ok {
-		t.Errorf("expected: false, got: %v", ok)
+func TestTakeN(t *testing.T) {
+	bucket3 := NewBucket(rdb, "test3", 10, 10)
+	if !bucket3.TakeN(5) {
+		fmt.Println(time.Now().Unix())
+		t.Errorf("expected: true, got: false")
+	}
+
+	bucket4 := NewBucket(rdb, "test4", 10, 1)
+	if bucket4.TakeN(11) {
+		t.Errorf("expected: false, got: true")
+	}
+}
+
+func TestTakeWithRedisDown(t *testing.T) {
+	bucket5 := NewBucket(nil, "test", 1, 10)
+	if !bucket5.Take() {
+		t.Errorf("expected: true, got: false")
+	}
+
+	bucket6 := NewBucket(nil, "test2", 1, 0)
+	if bucket6.Take() {
+		t.Errorf("expected: false, got: true")
+	}
+}
+
+func TestTakeNWithRedisDown(t *testing.T) {
+	bucket7 := NewBucket(nil, "test3", 10, 10)
+	if !bucket7.TakeN(5) {
+		t.Errorf("expected: true, got: false")
+	}
+
+	bucket8 := NewBucket(nil, "test4", 10, 1)
+	if bucket8.TakeN(11) {
+		t.Errorf("expected: false, got: true")
 	}
 }
